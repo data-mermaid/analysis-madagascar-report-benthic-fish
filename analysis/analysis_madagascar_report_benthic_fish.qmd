@@ -1,0 +1,139 @@
+---
+title: "Madagascar Report Card"
+subtitle: "Benthic Cover and Fish Biomass"
+author:
+  - name: Iain R. Caldwell
+  - name: (based on code by James Robinson)
+date: 02/23
+/2025
+format: 
+  html: #for website
+    embed-resources: true
+    code-fold: true
+    code-summary: "Show the code"
+    code-link: true
+editor: visual
+toc: true
+title-block-banner: "#f0f3f5"
+title-block-banner-color: "black"
+---
+
+------------------------------------------------------------------------
+
+This example recreates figures from a "Madagascar Report Card" comparing benthic cover and fish biomass across surveyed sites. The code used here is an adaptation of R code originally developed by James Robinson, using data from the MERMAID platform ([https://datamermaid.org](https://datamermaid.org/)).
+
+------------------------------------------------------------------------
+
+## Getting summary sample event data from MERMAID
+
+The first step is to download summary sample event data from MERMAID, using the mermaidr package (for which documentation can be found at <https://data-mermaid.github.io/mermaidr/>). The summary sample events contain all surveys (i.e. sample events) that have permissions of "public summary" or "public".
+
+```{r}
+#| label: Load packages and download data
+#| warning: false
+rm(list = ls()) #remove past stored objects
+options(scipen = 999) #turn off scientific notation
+
+####  Load packages and libraries ####
+## If this is the first time using mermaidr, install the package through "remotes"
+# install.packages("remotes")
+# remotes::install_github("data-mermaid/mermaidr")
+# install.packages("tidyverse")
+# install.packages("plotly") 
+# install.packages("htmlwidgets")
+
+library(mermaidr) #package to download data from datamermaid.org
+library(tidyverse) #package that makes it easier to work with data
+library(plotly) #for interactive plotting
+library(htmlwidgets) #for saving plots at html files
+library(DT) #package for interactive tables
+
+#### Get data from MERMAID for creating aggregate visualizations ####
+allMermaidSampEventsTBL <- mermaidr::mermaid_get_summary_sampleevents()
+```
+
+------------------------------------------------------------------------
+
+## Filter to an individual project and get relevant data by site
+
+The next step is to filter the data to an individual project and get data for the relevant benthic cover and fish biomass data for each site.
+
+In this case, I will focus on the project called "Madagascar NW 2020", as it has data policies of "public summary" for both benthic cover and fish biomass.
+
+Since the report card shows patterns in benthic cover and fish biomass by site, I will also get just the most recent surveys for each site and select only the benthic cover and fish biomass fields of interest. In the case of this project (at least at the time of writing this code) there is only one survey (i.e. sample event) per site so the step of getting the most recent survey is not strictly necessary. However, I have included this step here so it can be applied to other projects that may have multiple surveys per site.
+
+Although there are multiple protocols that could collect the benthic data of interest, this project only includes one (benthic PIT) so I am focusing on that protocol. However, this could be applied to other protocols by changing the associated field names (i.e. column titles). The report card has benthic cover figures seperated into broad benthic categories. In the MERMAID summary sample events there are 11 of these broad categories that I will use: Hard coral, Soft coral, Macroalgae, Turf algae, Crustose coralline algae, Rubble, Sand, Seagrass, Cyanobacteria, Other invertebrates, and Bare substrate. I also calculate an "Other" category in case those 11 categories do not encompass all of the benthic cover.
+
+```{r}
+#| label: Filter to individual project and get relevant data
+
+madagascarProjSampleEventsTBL <- allMermaidSampEventsTBL %>% 
+  filter(project == "Madagascar NW 2020" &
+           !is.na(benthicpit_sample_unit_count) &
+           !is.na(beltfish_sample_unit_count)) %>%  # <1>
+  group_by(site) %>% # <2>
+  filter(sample_date == max(sample_date)) %>% # <2>
+  ungroup() %>%  # <2>
+  select(site, management_rules, # <3>
+         `benthicpit_percent_cover_benthic_category_avg_Hard coral`, # <4>
+         `benthicpit_percent_cover_benthic_category_avg_Soft coral`, # <4>
+         benthicpit_percent_cover_benthic_category_avg_Macroalgae, # <4>
+         `benthicpit_percent_cover_benthic_category_avg_Turf algae`, # <4>
+         `benthicpit_percent_cover_benthic_category_avg_Crustose coralline algae`, # <4>
+         benthicpit_percent_cover_benthic_category_avg_Rubble, # <4>
+         benthicpit_percent_cover_benthic_category_avg_Sand, # <4>
+         benthicpit_percent_cover_benthic_category_avg_Seagrass, # <4>
+         benthicpit_percent_cover_benthic_category_avg_Cyanobacteria, # <4>
+         `benthicpit_percent_cover_benthic_category_avg_Other invertebrates`, # <4>
+         `benthicpit_percent_cover_benthic_category_avg_Bare substrate`, # <4>
+         beltfish_biomass_kgha_avg, # <5>
+         beltfish_biomass_kgha_trophic_group_avg_planktivore, # <5>
+         `beltfish_biomass_kgha_trophic_group_avg_herbivore-macroalgae`, # <5>
+         `beltfish_biomass_kgha_trophic_group_avg_herbivore-detritivore`, # <5>
+         `beltfish_biomass_kgha_trophic_group_avg_invertivore-sessile`, # <5>
+         `beltfish_biomass_kgha_trophic_group_avg_invertivore-mobile`, # <5>
+         beltfish_biomass_kgha_trophic_group_avg_omnivore, # <5>
+         beltfish_biomass_kgha_trophic_group_avg_piscivore) %>%  # <5>
+  rename_with(~ gsub("benthicpit_percent_cover_benthic_category_avg_", # <6>
+                     "percent_cover_",
+                     .x, fixed = TRUE)) %>% 
+  rename_with(~ gsub("beltfish_biomass_kgha_trophic_group_avg_", # <6>
+                     "biomass_",
+                     .x, fixed = TRUE)) %>% 
+  rename(TotalBiomass = beltfish_biomass_kgha_avg) %>% # <6>
+  mutate(percent_cover_Other = 100 - (`percent_cover_Hard coral` + # <7>
+                                        `percent_cover_Soft coral` +
+                                        percent_cover_Macroalgae +
+                                        `percent_cover_Turf algae` +
+                                        `percent_cover_Crustose coralline algae` +
+                                        percent_cover_Rubble +
+                                        percent_cover_Sand +
+                                        percent_cover_Seagrass +
+                                        percent_cover_Cyanobacteria +
+                                        `percent_cover_Other invertebrates` +
+                                        `percent_cover_Bare substrate`)) 
+  
+```
+
+1.  Filter to an individual project and remove any sample events that don't have any benthic or fish data
+2.  Get the most recent data for each site
+3.  Select relevant site data and...
+4.  ...relevant benthic cover fields and...
+5.  ...relevant fish biomass fields
+6.  Shorten columns to make them easier to reference
+7.  Assign the remaining % cover to "Other"
+
+------------------------------------------------------------------------
+
+## Take a look at the data
+
+One way to view the data after the filtering and selecting is as an interactive table using the package "DT" ([https://rstudio.github.io/DT/https://rstudio.github.io/DT/](https://rstudio.github.io/DT/)).
+
+```{r}
+#| label: Look at the data in an interactive table
+
+datatable(madagascarProjSampleEventsTBL %>%
+            select(site, management_rules,
+                   `percent_cover_Hard coral`, TotalBiomass))
+
+```
