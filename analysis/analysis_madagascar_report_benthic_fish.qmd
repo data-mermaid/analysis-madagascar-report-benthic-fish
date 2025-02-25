@@ -146,7 +146,7 @@ In the table you can sort, filter, or search.
 
 ## Stacked bar plots - Benthic cover by site and category
 
-The following code recreates the first part of the report - a plot showing the % cover of all high level benthic categories for each site as stacked horizontal bars.
+The following recreates the first part of the report - a plot showing the % cover of all high level benthic categories for each site as stacked horizontal bars. The x-axis showing the % benthic cover is reversed and the site names are on a y-axis on the right of the plot as this plot will later be combined with another plot beside it with fish biomass. Sites are ordered from highest to lowest % hard coral, with the values for % hard coral shown on the left.
 
 ```{r}
 #| label: Stacked bar plots - benthic cover by site and category
