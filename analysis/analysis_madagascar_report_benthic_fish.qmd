@@ -4,8 +4,7 @@ subtitle: "Benthic Cover and Fish Biomass"
 author:
   - name: Iain R. Caldwell
   - name: (based on code by James Robinson)
-date: 02/23
-/2025
+date: 02/23/2025
 format: 
   html: #for website
     embed-resources: true
@@ -47,6 +46,8 @@ library(tidyverse) #package that makes it easier to work with data
 library(plotly) #for interactive plotting
 library(htmlwidgets) #for saving plots at html files
 library(DT) #package for interactive tables
+library(ggplot2)
+library(ggpubr)
 
 #### Get data from MERMAID for creating aggregate visualizations ####
 allMermaidSampEventsTBL <- mermaidr::mermaid_get_summary_sampleevents()
@@ -111,7 +112,8 @@ madagascarProjSampleEventsTBL <- allMermaidSampEventsTBL %>%
                                         percent_cover_Seagrass +
                                         percent_cover_Cyanobacteria +
                                         `percent_cover_Other invertebrates` +
-                                        `percent_cover_Bare substrate`)) 
+                                        `percent_cover_Bare substrate`)) %>% 
+  arrange(`percent_cover_Hard coral`)
   
 ```
 
@@ -136,4 +138,96 @@ datatable(madagascarProjSampleEventsTBL %>%
             select(site, management_rules,
                    `percent_cover_Hard coral`, TotalBiomass))
 
+```
+
+In the table you can sort, filter, or search.
+
+------------------------------------------------------------------------
+
+## Stacked bar plots - Benthic cover by site and category
+
+The following code recreates the first part of the report - a plot showing the % cover of all high level benthic categories for each site as stacked horizontal bars.
+
+```{r}
+#| label: Stacked bar plots - benthic cover by site and category
+
+### Set theme across all plots
+theme_set(theme_classic() +
+            theme(axis.text=element_text(size=11, colour='black'),
+                  axis.line=element_line(colour='black'),
+                  axis.ticks=element_line(colour='black'),
+                  axis.title=element_text(size=12, colour='black'),
+                  plot.title=element_text(colour='black', size=14,
+                                          hjust=0.5, face='bold'),
+                  plot.subtitle=element_text(colour='black', size=11, hjust=0.5),
+                  legend.title=element_text(colour='black', face='bold'),
+                  legend.background = element_rect(fill='white', color=NA),
+                  legend.box.background = element_rect(fill='grey'),
+                  panel.border=element_blank()))
+
+### Reshape the data so that hard coral categories are in rows
+benthicTBL <- madagascarProjSampleEventsTBL %>%
+  select(site, `percent_cover_Hard coral`:TotalBiomass) %>% 
+  pivot_longer(-c(site, TotalBiomass),
+               names_prefix = "percent_cover_",
+               names_to = 'benthic',
+               values_to = 'cover') %>%
+  mutate(cover = ifelse(is.na(cover), 0, cover),
+         #Make site into a factor with levels that sort by hard coral cover
+         site = factor(site, levels = madagascarProjSampleEventsTBL$site))
+
+benthicTBL <- benthicTBL %>% 
+  mutate(benthic = factor(benthic, levels = unique(benthicTBL$benthic)))
+
+### Assign colors to the benthic types to match the dashboard
+benthic_colors <- c("Hard coral" = "#498fc9",
+                    "Soft coral" = "#9ce5fa",
+                    "Macroalgae" = "#b2b000",
+                    "Turf algae" = "#d9eea8",
+                    "Crustose coralline algae" = "#fbd7d5",
+                    "Rubble" = "#f5f6af",
+                    "Sand" = "#c1b180",
+                    "Seagrass" = "#4d4d4d",
+                    "Cyanobacteria" = "#870e00",
+                    "Other invertebrates" = "#4e4e4e",
+                    "Bare substrate" = "#f2f3f3")
+
+### Get a separate legend for the benthic plot
+legend_benthic <- get_legend(ggplot(benthicTBL,
+                                  aes(x = site, y = cover, fill = benthic)) +
+                             geom_bar(stat = 'identity') +
+                             # theme(legend.title=element_blank()) +
+                             labs(fill = 'Benthic type') +
+                             guides(override.aes = list(size=0.2)) +
+                             scale_fill_manual(values = benthic_colors)) 
+  
+benthicPlot <- ggplot(data = benthicTBL,
+                      aes(x = as.numeric(site), y = cover, fill = benthic)) +
+  geom_bar(position = 'stack', stat = 'identity', alpha = 0.9,
+           color = "black", linewidth = 0.25) +
+  labs(x = '', y = 'cover (%)', fill = 'Benthic type',
+       title=paste('Benthos')) +
+  coord_flip() +
+  scale_fill_manual(values = benthic_colors) +
+  scale_y_reverse(expand = c(0,0)) + 
+  scale_x_continuous(expand = c(0,0),
+                     breaks = 1:length(unique(benthicTBL$site)),
+                     labels = paste0(
+                       round(benthicTBL$cover[benthicTBL$benthic == "Hard coral"]),
+                       '%'),
+                     sec.axis = sec_axis(~.,
+                                         breaks = 1:length(unique(benthicTBL$site)),
+                                         labels = unique(benthicTBL$site))) +
+    theme(legend.position = 'left',
+          legend.box.background = element_blank(),
+          legend.key = element_rect(color = "black", linewidth = 0.25),
+          plot.margin = unit(c(0.2, 0.1, 0, 0), 'cm'),
+          axis.text.y.left = element_text(size=9, color='#498FC9'),
+          axis.text.y.right = element_text(size=9, color='black', hjust = 0.5),
+          axis.line.y = element_blank(),
+          axis.ticks.x = element_line(color='black'),
+          axis.ticks.y = element_blank(),
+          panel.border = element_blank())
+
+benthicPlot
 ```
