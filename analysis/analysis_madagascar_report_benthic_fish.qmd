@@ -15,6 +15,7 @@ editor: visual
 toc: true
 title-block-banner: "#f0f3f5"
 title-block-banner-color: "black"
+include-after-body: "footer.html"
 ---
 
 ------------------------------------------------------------------------
@@ -141,6 +142,12 @@ datatable(madagascarProjSampleEventsTBL %>%
 ```
 
 In the table you can sort, filter, or search.
+
+------------------------------------------------------------------------
+
+## Ecosystem status text block
+
+In the report card there is a text block with information about the status of the ecosystem for each region in Madagascar. This includes averages for fish biomass, hard coral % cover, macroalgae % cover, and the number of sites. Also included is the number of fish species but I have not included that here as it is not currently something that is reported for summary sample events. However, this could be calculated from the observations within a project if the fishbelt data policy is set to "public" or if you are a user within a project. The following is a recreation of that text block, which can be then combined with the plots into a single document
 
 ------------------------------------------------------------------------
 
