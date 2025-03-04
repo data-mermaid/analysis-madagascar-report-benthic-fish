@@ -8,10 +8,10 @@ date: 02/23/2025
 format: 
   html: #for website
     embed-resources: true
-    code-fold: true
-    code-summary: "Show the code"
-    code-link: true
 editor: visual
+code-fold: true
+code-summary: "Show the code"
+code-link: true
 toc: true
 title-block-banner: "#f0f3f5"
 title-block-banner-color: "black"
@@ -69,8 +69,10 @@ Although there are multiple protocols that could collect the benthic data of int
 ```{r}
 #| label: Filter to individual project and get relevant data
 
+projectName = "Madagascar NW 2020"
+
 madagascarProjSampleEventsTBL <- allMermaidSampEventsTBL %>% 
-  filter(project == "Madagascar NW 2020" &
+  filter(project == projectName &
            !is.na(benthicpit_sample_unit_count) &
            !is.na(beltfish_sample_unit_count)) %>%  # <1>
   group_by(site) %>% # <2>
@@ -88,22 +90,26 @@ madagascarProjSampleEventsTBL <- allMermaidSampEventsTBL %>%
          benthicpit_percent_cover_benthic_category_avg_Cyanobacteria, # <4>
          `benthicpit_percent_cover_benthic_category_avg_Other invertebrates`, # <4>
          `benthicpit_percent_cover_benthic_category_avg_Bare substrate`, # <4>
-         beltfish_biomass_kgha_avg, # <5>
          beltfish_biomass_kgha_trophic_group_avg_planktivore, # <5>
          `beltfish_biomass_kgha_trophic_group_avg_herbivore-macroalgae`, # <5>
          `beltfish_biomass_kgha_trophic_group_avg_herbivore-detritivore`, # <5>
          `beltfish_biomass_kgha_trophic_group_avg_invertivore-sessile`, # <5>
          `beltfish_biomass_kgha_trophic_group_avg_invertivore-mobile`, # <5>
          beltfish_biomass_kgha_trophic_group_avg_omnivore, # <5>
-         beltfish_biomass_kgha_trophic_group_avg_piscivore) %>%  # <5>
+         beltfish_biomass_kgha_trophic_group_avg_piscivore,
+         beltfish_biomass_kgha_trophic_group_avg_other) %>%  # <5>
   rename_with(~ gsub("benthicpit_percent_cover_benthic_category_avg_", # <6>
                      "percent_cover_",
                      .x, fixed = TRUE)) %>% 
   rename_with(~ gsub("beltfish_biomass_kgha_trophic_group_avg_", # <6>
                      "biomass_",
                      .x, fixed = TRUE)) %>% 
-  rename(TotalBiomass = beltfish_biomass_kgha_avg) %>% # <6>
-  mutate(percent_cover_Other = 100 - (`percent_cover_Hard coral` + # <7>
+  replace(is.na(.), 0) %>% 
+  mutate(TotalBiomass = biomass_planktivore + `biomass_herbivore-macroalgae` +# <7>
+           `biomass_herbivore-detritivore` +
+           `biomass_invertivore-sessile` + `biomass_invertivore-mobile` + 
+           biomass_omnivore + biomass_piscivore + biomass_other,
+         percent_cover_Other = 100 - (`percent_cover_Hard coral` + # <8>
                                         `percent_cover_Soft coral` +
                                         percent_cover_Macroalgae +
                                         `percent_cover_Turf algae` +
@@ -124,7 +130,8 @@ madagascarProjSampleEventsTBL <- allMermaidSampEventsTBL %>%
 4.  ...relevant benthic cover fields and...
 5.  ...relevant fish biomass fields
 6.  Shorten columns to make them easier to reference
-7.  Assign the remaining % cover to "Other"
+7.  Calculate a total biomass across the trophic groups
+8.  Assign the remaining % cover to "Other"
 
 ------------------------------------------------------------------------
 
@@ -147,7 +154,44 @@ In the table you can sort, filter, or search.
 
 ## Ecosystem status text block
 
-In the report card there is a text block with information about the status of the ecosystem for each region in Madagascar. This includes averages for fish biomass, hard coral % cover, macroalgae % cover, and the number of sites. Also included is the number of fish species but I have not included that here as it is not currently something that is reported for summary sample events. However, this could be calculated from the observations within a project if the fishbelt data policy is set to "public" or if you are a user within a project. The following is a recreation of that text block, which can be then combined with the plots into a single document
+In the report card there is a text block with information about the status of the ecosystem for each region in Madagascar. This includes averages for fish biomass, hard coral % cover, macroalgae % cover, and the number of sites. Also included is the number of fish species but I have not included that here as it is not currently something that is reported for summary sample events. However, this could be calculated from the observations within a project if the fishbelt data policy is set to "public" or if you are a user within a project. The following is a recreation of that text block, which can be then combined with the plots into a single document.
+
+```{r}
+#| label: Ecosystem status text block
+
+## arrange summary stats for a top-left data display
+datadisplay <- data.frame(
+  x = 0,
+  y = seq(1,0, length.out = 4),
+  value = c(paste(round(mean(madagascarProjSampleEventsTBL$TotalBiomass),
+                        0),
+                  'kg/ha'),
+            paste0(round(
+              mean(madagascarProjSampleEventsTBL$`percent_cover_Hard coral`),
+              0),'%'),
+            paste0(round(
+              mean(madagascarProjSampleEventsTBL$percent_cover_Macroalgae),
+              0), '%'),
+            length(unique(madagascarProjSampleEventsTBL$site))),
+  text = c('Biomass:', 'Hard coral:', 'Macroalgae:', '# sites'))
+
+gtext <- ggplot(datadisplay) +
+  geom_text(aes(x, y, label = text), fontface = 'bold', hjust = 1) +
+  geom_text(aes(x, y, label = value), nudge_x = .01, hjust = 0) + 
+  annotate(x = 0, y = 1.6, geom = 'text',
+           label = projectName,
+           fontface = 'bold', size =5.5, hjust = 0.5) +
+  annotate(x = 0, y = 1.3, geom = 'text',
+           label = 'Ecosystem status', fontface = 'plain',
+           size = 4.5, hjust = 0.5) +
+  theme_void() +
+  theme(plot.margin=unit(c(0, 0, 0, 0), 'cm')) +
+  scale_y_continuous(limits = c(-.1, 1.8), expand=c(0,0)) +
+  scale_x_continuous(limits = c(-0.2, 0.2), expand=c(0,0))
+
+gtext
+
+```
 
 ------------------------------------------------------------------------
 
@@ -164,8 +208,6 @@ theme_set(theme_classic() +
                   axis.line=element_line(colour='black'),
                   axis.ticks=element_line(colour='black'),
                   axis.title=element_text(size=12, colour='black'),
-                  plot.title=element_text(colour='black', size=14,
-                                          hjust=0.5, face='bold'),
                   plot.subtitle=element_text(colour='black', size=11, hjust=0.5),
                   legend.title=element_text(colour='black', face='bold'),
                   legend.background = element_rect(fill='white', color=NA),
@@ -174,7 +216,8 @@ theme_set(theme_classic() +
 
 ### Reshape the data so that hard coral categories are in rows
 benthicTBL <- madagascarProjSampleEventsTBL %>%
-  select(site, `percent_cover_Hard coral`:TotalBiomass) %>% 
+  select(site, `percent_cover_Hard coral`:`percent_cover_Bare substrate`,
+         TotalBiomass, percent_cover_Other) %>% 
   pivot_longer(-c(site, TotalBiomass),
                names_prefix = "percent_cover_",
                names_to = 'benthic',
@@ -205,7 +248,7 @@ legend_benthic <- get_legend(ggplot(benthicTBL,
                              geom_bar(stat = 'identity') +
                              # theme(legend.title=element_blank()) +
                              labs(fill = 'Benthic type') +
-                             guides(override.aes = list(size=0.2)) +
+                             guides(override.aes = list(size = 0.2)) +
                              scale_fill_manual(values = benthic_colors)) 
   
 benthicPlot <- ggplot(data = benthicTBL,
@@ -213,7 +256,7 @@ benthicPlot <- ggplot(data = benthicTBL,
   geom_bar(position = 'stack', stat = 'identity', alpha = 0.9,
            color = "black", linewidth = 0.25) +
   labs(x = '', y = 'cover (%)', fill = 'Benthic type',
-       title=paste('Benthos')) +
+       title = 'Benthos') +
   coord_flip() +
   scale_fill_manual(values = benthic_colors) +
   scale_y_reverse(expand = c(0,0)) + 
@@ -228,13 +271,99 @@ benthicPlot <- ggplot(data = benthicTBL,
     theme(legend.position = 'left',
           legend.box.background = element_blank(),
           legend.key = element_rect(color = "black", linewidth = 0.25),
+          plot.title=element_text(colour='black', size = 14,
+                                          hjust = 0.5, face = 'bold'),
           plot.margin = unit(c(0.2, 0.1, 0, 0), 'cm'),
-          axis.text.y.left = element_text(size=9, color='#498FC9'),
-          axis.text.y.right = element_text(size=9, color='black', hjust = 0.5),
+          axis.text.y.left = element_text(size = 9, color = '#498FC9'),
+          axis.text.y.right = element_text(size = 9, color = 'black', hjust = 0.5),
           axis.line.y = element_blank(),
-          axis.ticks.x = element_line(color='black'),
+          axis.ticks.x = element_line(color = 'black'),
           axis.ticks.y = element_blank(),
           panel.border = element_blank())
 
 benthicPlot
+```
+
+## Stacked bar plots - Fish biomass by trophic group
+
+The following recreates the top right figure in the report - a plot showing fish biomass for each trophic group of fishes as stacked horizontal bars for each site. The x-axis has biomass in kg/ha and the site names are on a y-axis on the left of the plot. Sites are ordered the same as in the benthic plot, from highest to lowest % hard coral. Also included at the end of each stacked bar is text with the total fish biomass for each site and the management regime name.
+
+```{r}
+#| label: Stacked bar plots - fish biomass by trophic group
+
+### Reshape the data so that functional groups are in rows
+fishTBL <- madagascarProjSampleEventsTBL %>%
+  select(site, management_rules, `percent_cover_Hard coral`,
+         biomass_planktivore:TotalBiomass) %>% 
+  pivot_longer(-c(site, management_rules,
+                  `percent_cover_Hard coral`, TotalBiomass),
+               names_prefix = "biomass_",
+               names_to = 'TG',
+               values_to = 'biomass') %>%
+  mutate(biomass = ifelse(is.na(biomass), 0, biomass),
+         #Make site into a factor with levels that sort by hard coral cover
+         site = factor(site, levels = madagascarProjSampleEventsTBL$site),
+         TG = case_when(TG == "planktivore" ~ "Planktivore",
+                        TG == "herbivore-macroalgae" ~ "Herbivore (macroalgae)",
+                        TG == "herbivore-detritivore" ~ "Herbivore (detritivore)",
+                        TG == "invertivore-sessile" ~ "Invertivore (sessile)",
+                        TG == "invertivore-mobile" ~ "Invertivore (mobile)",
+                        TG == "omnivore" ~ "Omnivore",
+                        TG == "piscivore" ~ "Piscivore",
+                        TG == "other" ~ "Other",
+                        .default = TG)) %>% 
+  mutate(TG = factor(TG, levels = c("Planktivore",
+                                    "Herbivore (macroalgae)",
+                                    "Herbivore (detritivore)",
+                                    "Invertivore (sessile)",
+                                    "Invertivore (mobile)",
+                                    "Omnivore",
+                                    "Piscivore",
+                                    "Other")))
+
+### Assign colors to the benthic types to match the dashboard
+tg_colors <- c("Planktivore" = "#bebad8",
+               "Herbivore (macroalgae)" = "#659034",
+               "Herbivore (detritivore)" = "#ddee96",
+               "Invertivore (sessile)" = "#f1da54",
+               "Invertivore (mobile)" = "#e7b16d",
+               "Omnivore" = "#9ccbc1",
+               "Piscivore" = "#597db4",
+               "Other" = "grey")
+
+#### Recreate the stacked barplot with fish biomass by functional group
+fishBiomassPlot <- ggplot(data = fishTBL,
+                          aes(x = site, y = biomass, fill = TG)) +
+  geom_bar(position = 'stack', stat = 'identity', alpha = 0.9,
+           color = "black", linewidth = 0.25) +
+  labs(x = '', y = 'biomass (kg/ha)', fill = 'Trophic group',
+       title = 'Fish') +
+  coord_flip() +
+  scale_fill_manual(values = tg_colors) +
+  geom_text(data = fishTBL,
+            aes(x = site, y = TotalBiomass + 50,
+                label = paste0(round(TotalBiomass, 0))),
+            size = 2, hjust = 0, vjust = -.25) +
+  geom_text(data = fishTBL,
+            aes(x = site, y = TotalBiomass + 50,
+                label = management_rules),
+            size = 2, hjust = 0, vjust = 1.2) +
+  scale_y_continuous(expand = c(0, 0),
+                     limits = c(0, max(fishTBL$TotalBiomass) + 350)) +
+  theme_classic() +
+  theme(legend.position = "inside",
+        plot.title=element_text(colour = 'black', size = 14,
+                                hjust = 0.5, face = 'bold'),
+        legend.position.inside = c(0.7, 0.28),
+        legend.box.background = element_blank(),
+        legend.key = element_rect(color = "black", linewidth = 0.25),
+        plot.margin = unit(c(0.2, 1, 0, 0.2), 'cm'),
+        axis.ticks.y = element_blank(),
+        axis.line.x = element_line(color='black'),
+        axis.line.y = element_blank(),
+        axis.ticks.x = element_line(color='black'),
+        axis.text.y = element_text(hjust = 0.5, size = 8),
+        panel.border = element_blank())
+  
+fishBiomassPlot
 ```
