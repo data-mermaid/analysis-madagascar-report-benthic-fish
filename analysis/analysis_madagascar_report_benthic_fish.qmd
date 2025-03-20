@@ -11,7 +11,6 @@ format:
 editor: visual
 code-fold: true
 code-summary: "Show the code"
-code-link: true
 toc: true
 title-block-banner: "#f0f3f5"
 title-block-banner-color: "black"
@@ -255,7 +254,7 @@ benthicPlot <- ggplot(data = benthicTBL,
                       aes(x = as.numeric(site), y = cover, fill = benthic)) +
   geom_bar(position = 'stack', stat = 'identity', alpha = 0.9,
            color = "black", linewidth = 0.25) +
-  labs(x = '', y = 'cover (%)', fill = 'Benthic type',
+  labs(x = '', y = 'Cover (%)', fill = 'Benthic type',
        title = 'Benthos') +
   coord_flip() +
   scale_fill_manual(values = benthic_colors) +
@@ -284,6 +283,8 @@ benthicPlot <- ggplot(data = benthicTBL,
 
 benthicPlot
 ```
+
+------------------------------------------------------------------------
 
 ## Stacked bar plots - Fish biomass by trophic group
 
@@ -337,7 +338,7 @@ fishBiomassPlot <- ggplot(data = fishTBL,
                           aes(x = site, y = biomass, fill = TG)) +
   geom_bar(position = 'stack', stat = 'identity', alpha = 0.9,
            color = "black", linewidth = 0.25) +
-  labs(x = '', y = 'biomass (kg/ha)', fill = 'Trophic group',
+  labs(x = '', y = 'Biomass (kg/ha)', fill = 'Trophic group',
        title = 'Fish') +
   coord_flip() +
   scale_fill_manual(values = tg_colors) +
@@ -370,6 +371,8 @@ fishBiomassPlot <- ggplot(data = fishTBL,
 fishBiomassPlot
 ```
 
+------------------------------------------------------------------------
+
 ## Scatterplot - Fish biomass vs. benthic cover categories
 
 In the bottom left corner of the report are scatterplots that show the spread of fish biomass (on the y-axis) and % cover (on the x-axis) for each of 8 high level benthic categories (as facets) - resulting in 8 plots. Within each scatterplot, the data is fitted to a generalized additive model (GAM) using the geom_smooth function (<https://ggplot2.tidyverse.org/reference/geom_smooth.html>). Below is a recreation of these plots. Although there are 11 high level benthic attributes returned by in MERMAID's summary sample events (as can be seen in the benthic plot above), only a subset of 8 are featured here to allow more room for each plot. Those 8 are the following: Hard coral, Soft coral, Macroalgae, Turf algae, Crustose coralline algae, Rubble, Sand, and Bare substrate.
@@ -386,8 +389,8 @@ biomassVsCoverScatterplots <-
                                   "Other")),
          aes(cover, TotalBiomass)) +
   geom_smooth(method = 'gam', col = 'grey', fill = 'grey90') +
-  labs(x = 'benthic cover (%)',
-       y = "fish biomass (kg/ha)",
+  labs(x = 'Benthic cover (%)',
+       y = "Fish biomass (kg/ha)",
        title = '') +
   geom_point(aes(fill = benthic), shape = 21, alpha = 0.8, size = 2) +
   scale_color_manual(values = benthic_colors) +
@@ -401,4 +404,39 @@ biomassVsCoverScatterplots <-
 
 biomassVsCoverScatterplots
 
+```
+
+In this case, there are too many zeroes to fit a GAM to the "Crustose coralline algae" category.
+
+------------------------------------------------------------------------
+
+## Scatterplot - Trophic group biomass vs. hard coral cover
+
+In the bottom right corner of the report are more scatterplots that show fish biomass for each of 7 trophic group (on the y-axis) and % hard coral cover (on the x-axis), with each trophic group as a separate facet/plot. Within each plot, the data is again fitted to a generalized additive model (GAM) as above. Below is a recreation of these plots.
+
+```{r}
+#| label: Scatterplot - Trophic group biomass vs. hard coral cover
+#| warning: false
+
+
+trophicBiomassVsHarcCoralScatterplots <-
+  ggplot(fishTBL %>% 
+           filter(TG != "Other"),
+         aes(x = `percent_cover_Hard coral`, y = biomass)) +
+  facet_wrap(~TG, ncol = 2, scales = 'free_y') +
+  geom_smooth(method = 'gam', col = 'grey', fill = 'grey90') +
+  geom_point(aes(fill = TG), shape = 21, alpha = 0.8, size = 2) +
+  scale_fill_manual(values = tg_colors) +
+  scale_y_continuous(limits = c(0, NA), expand = c(0.1,0.1)) +
+  labs(x = 'Hard coral cover (%)',
+       y = "Fish biomass (kg/ha)",
+       title = '') +
+  theme(legend.title = element_blank(), 
+        legend.position ='none',
+        strip.text = element_text(hjust = 0, face = "bold"),
+        strip.background = element_blank(),
+        axis.text = element_text(size = 9),
+        plot.margin = unit(c(0,.5, 0, .5), 'cm')) 
+
+trophicBiomassVsHarcCoralScatterplots
 ```
