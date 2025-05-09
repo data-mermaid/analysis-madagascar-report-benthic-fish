@@ -3,8 +3,8 @@ title: "Madagascar Report Card"
 subtitle: "Benthic Cover and Fish Biomass"
 author:
   - name: Iain R. Caldwell
-  - name: (based on code by James Robinson)
-date: 02/23/2025
+  - name: James P.W. Robinson
+date: 05/09/2025
 format: 
   html: #for website
     embed-resources: true
@@ -19,7 +19,7 @@ include-after-body: "footer.html"
 
 ------------------------------------------------------------------------
 
-This example recreates figures from a "Madagascar Report Card" comparing benthic cover and fish biomass across surveyed sites. The code used here is an adaptation of R code originally developed by James Robinson, using data from the MERMAID platform ([https://datamermaid.org](https://datamermaid.org/)).
+This example recreates figures from a "Madagascar Report Card" comparing benthic cover and fish biomass across surveyed sites. The code in this example is an adaptation of R code originally developed by James Robinson. Here we adapt the code to directly access data from the MERMAID platform ([https://datamermaid.org](https://datamermaid.org/)) and visualize it as James did in his original code.
 
 ------------------------------------------------------------------------
 
