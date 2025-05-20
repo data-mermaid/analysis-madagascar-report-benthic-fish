@@ -4,7 +4,7 @@ subtitle: "Benthic Cover and Fish Biomass"
 author:
   - name: Iain R. Caldwell
   - name: James P.W. Robinson
-date: 05/09/2025
+date: 05/19/2025
 format: 
   html: #for website
     embed-resources: true
@@ -19,7 +19,7 @@ include-after-body: "footer.html"
 
 ------------------------------------------------------------------------
 
-This example recreates figures from a "Madagascar Report Card" comparing benthic cover and fish biomass across surveyed sites. The code in this example is an adaptation of R code originally developed by James Robinson. Here we adapt the code to directly access data from the MERMAID platform ([https://datamermaid.org](https://datamermaid.org/)) and visualize it as James did in his original code.
+This example is based on a "Madagascar Report Card" comparing and examining patterns between benthic cover and fish biomass across sites in Madagascar, adapted to use data from the MERMAID platform ([https://datamermaid.org](https://datamermaid.org/)). Visualizing fish and benthic cover data together can be helpful for identifying if fish biomass and benthic cover are related and whether some sites are doing much better than others. This could be a first step in examining possible drivers of benthic and fish communities.
 
 ------------------------------------------------------------------------
 
@@ -37,9 +37,6 @@ options(scipen = 999) #turn off scientific notation
 ## If this is the first time using mermaidr, install the package through "remotes"
 # install.packages("remotes")
 # remotes::install_github("data-mermaid/mermaidr")
-# install.packages("tidyverse")
-# install.packages("plotly") 
-# install.packages("htmlwidgets")
 
 library(mermaidr) #package to download data from datamermaid.org
 library(tidyverse) #package that makes it easier to work with data
@@ -195,23 +192,14 @@ gtext
 
 ------------------------------------------------------------------------
 
-## Stacked bar plots - Benthic cover by site and category
+## Benthic cover by site and category
+
+### Stacked horizontal bar plot
 
 The following recreates the first part of the report - a plot showing the % cover of all high level benthic categories for each site as stacked horizontal bars. The x-axis showing the % benthic cover is reversed and the site names are on a y-axis on the right of the plot as this plot will later be combined with another plot beside it with fish biomass. Sites are ordered from highest to lowest % hard coral, with the values for % hard coral shown on the left.
 
 ```{r}
 #| label: Stacked bar plots - benthic cover by site and category
-
-### Set theme across all plots
-theme_set(theme_classic() +
-            theme(axis.text=element_text(size=11, colour='black'),
-                  axis.line=element_line(colour='black'),
-                  axis.ticks=element_line(colour='black'),
-                  axis.title=element_text(size=12, colour='black'),
-                  plot.subtitle=element_text(colour='black', size=11, hjust=0.5),
-                  legend.background = element_rect(fill='white', color=NA),
-                  legend.box.background = element_rect(fill='grey'),
-                  panel.border=element_blank()))
 
 ### Reshape the data so that hard coral categories are in rows
 benthicTBL <- madagascarProjSampleEventsTBL %>%
@@ -240,15 +228,6 @@ benthic_colors <- c("Hard coral" = "#498fc9",
                     "Cyanobacteria" = "#870e00",
                     "Other invertebrates" = "#4e4e4e",
                     "Bare substrate" = "#f2f3f3")
-
-### Get a separate legend for the benthic plot
-legend_benthic <- get_legend(ggplot(benthicTBL,
-                                  aes(x = site, y = cover, fill = benthic)) +
-                             geom_bar(stat = 'identity') +
-                             # theme(legend.title=element_blank()) +
-                             labs(fill = 'Benthic type') +
-                             guides(override.aes = list(size = 0.2)) +
-                             scale_fill_manual(values = benthic_colors)) 
   
 benthicPlot <- ggplot(data = benthicTBL,
                       aes(x = as.numeric(site), y = cover, fill = benthic)) +
@@ -267,33 +246,46 @@ benthicPlot <- ggplot(data = benthicTBL,
                      sec.axis = sec_axis(~.,
                                          breaks = 1:length(unique(benthicTBL$site)),
                                          labels = unique(benthicTBL$site))) +
-    theme(legend.position = 'left',
-          legend.box.background = element_blank(),
-          legend.key = element_rect(color = "black", linewidth = 0.25),
-          legend.title=element_text(colour='black', face='bold'),
-          plot.title = element_text(colour='black', size = 14,
-                                    hjust = 0.5, face = 'bold'),
-          plot.margin = unit(c(0.2, 0.1, 0, 0), 'cm'),
-          axis.text.y.left = element_text(size = 9, color = '#498FC9'),
-          axis.text.y.right = element_text(size = 9, color = 'black', hjust = 0.5),
-          axis.line.y = element_blank(),
-          axis.ticks.x = element_line(color = 'black'),
-          axis.ticks.y = element_blank(),
-          panel.border = element_blank())
+  theme_classic() +
+  theme(legend.position = 'left',
+        axis.text = element_text(size = 11, colour = 'black'),
+        axis.line = element_line(colour = 'black'),
+        axis.ticks = element_line(colour = 'black'),
+        axis.title = element_text(size = 12, colour = 'black'),
+        plot.subtitle = element_text(colour = 'black', size = 11, hjust = 0.5),
+        legend.background = element_rect(fill = 'white', color = NA),
+        legend.box.background = element_blank(),
+        legend.key = element_rect(color = "black", linewidth = 0.25),
+        legend.title = element_text(colour = 'black', face = 'bold'),
+        plot.title = element_text(colour = 'black', size = 14, hjust = 0.5,
+                                  face = 'bold'),
+        plot.margin = unit(c(0.2, 0.1, 0, 0), 'cm'),
+        axis.text.y.left = element_text(size = 9, color = '#498FC9'),
+        axis.text.y.right = element_text(size = 9, color = 'black', hjust = 0.5),
+        axis.line.y = element_blank(),
+        axis.ticks.x = element_line(color = 'black'),
+        axis.ticks.y = element_blank(),
+        panel.border = element_blank())
+
+#Save the plot to share in an analysis hub article
+ggsave("../plots/madagascar_report_card_benthicPlot.svg",
+       plot = benthicPlot)
 
 benthicPlot
 ```
 
 ------------------------------------------------------------------------
 
-## Stacked bar plots - Fish biomass by trophic group
+## Fish biomass by trophic group
+
+### Stacked horizontal bar plot
 
 The following recreates the top right figure in the report - a plot showing fish biomass for each trophic group of fishes as stacked horizontal bars for each site. The x-axis has biomass in kg/ha and the site names are on a y-axis on the left of the plot. Sites are ordered the same as in the benthic plot, from highest to lowest % hard coral. Also included at the end of each stacked bar is text with the total fish biomass for each site and the management regime name.
 
 ```{r}
 #| label: Stacked bar plots - fish biomass by trophic group
 
-### Reshape the data so that functional groups are in rows
+### Reshape the data so that trophic groups are in rows
 fishTBL <- madagascarProjSampleEventsTBL %>%
   select(site, management_rules, `percent_cover_Hard coral`,
          biomass_planktivore:TotalBiomass) %>% 
@@ -323,7 +315,7 @@ fishTBL <- madagascarProjSampleEventsTBL %>%
                                     "Piscivore",
                                     "Other")))
 
-### Assign colors to the benthic types to match the dashboard
+### Assign colors to the trophic groups to match the dashboard
 tg_colors <- c("Planktivore" = "#bebad8",
                "Herbivore (macroalgae)" = "#659034",
                "Herbivore (detritivore)" = "#ddee96",
@@ -333,7 +325,7 @@ tg_colors <- c("Planktivore" = "#bebad8",
                "Piscivore" = "#597db4",
                "Other" = "grey")
 
-#### Recreate the stacked barplot with fish biomass by functional group
+#### Recreate the stacked barplot with fish biomass by trophic group
 fishBiomassPlot <- ggplot(data = fishTBL,
                           aes(x = site, y = biomass, fill = TG)) +
   geom_bar(position = 'stack', stat = 'identity', alpha = 0.9,
@@ -351,29 +343,40 @@ fishBiomassPlot <- ggplot(data = fishTBL,
                 label = management_rules),
             size = 2, hjust = 0, vjust = 1.2) +
   scale_y_continuous(expand = c(0, 0),
-                     limits = c(0, max(fishTBL$TotalBiomass) + 350)) +
+                     limits = c(0, max(fishTBL$TotalBiomass) + 600)) +
   theme_classic() +
-  theme(legend.position = "right",
-        plot.title=element_text(colour = 'black', size = 14,
+  theme(axis.text = element_text(size = 11, colour = 'black'),
+        axis.line = element_line(colour = 'black'),
+        axis.ticks = element_line(colour = 'black'),
+        axis.title = element_text(size = 12, colour = 'black'),
+        plot.subtitle = element_text(colour = 'black', size = 11, hjust = 0.5),
+        legend.background = element_rect(fill = 'white', color = NA),
+        legend.position = "right",
+        plot.title = element_text(colour = 'black', size = 14,
                                 hjust = 0.5, face = 'bold'),
-        legend.position.inside = c(0.7, 0.28),
         legend.box.background = element_blank(),
         legend.key = element_rect(color = "black", linewidth = 0.25),
-        legend.title=element_text(colour='black', face='bold'),
+        legend.title = element_text(colour = 'black', face = 'bold'),
         plot.margin = unit(c(0.2, 1, 0, 0.2), 'cm'),
         axis.ticks.y = element_blank(),
-        axis.line.x = element_line(color='black'),
+        axis.line.x = element_line(color = 'black'),
         axis.line.y = element_blank(),
-        axis.ticks.x = element_line(color='black'),
+        axis.ticks.x = element_line(color = 'black'),
         axis.text.y = element_text(hjust = 0.5, size = 8),
         panel.border = element_blank())
+
+#Save the plot to share in an analysis hub article
+ggsave("../plots/madagascar_report_card_fishBiomassPlot.svg",
+       plot = fishBiomassPlot)
   
 fishBiomassPlot
 ```
 
 ------------------------------------------------------------------------
 
-## Scatterplot - Fish biomass vs. benthic cover categories
+## Fish biomass vs. benthic cover categories
+
+### Scatter plots with fitted GAMs
 
 In the bottom left corner of the report are scatterplots that show the spread of fish biomass (on the y-axis) and % cover (on the x-axis) for each of 8 high level benthic categories (as facets) - resulting in 8 plots. Within each scatterplot, the data is fitted to a generalized additive model (GAM) using the geom_smooth function (<https://ggplot2.tidyverse.org/reference/geom_smooth.html>). Below is a recreation of these plots. Although there are 11 high level benthic attributes returned by in MERMAID's summary sample events (as can be seen in the benthic plot above), only a subset of 8 are featured here to allow more room for each plot. Those 8 are the following: Hard coral, Soft coral, Macroalgae, Turf algae, Crustose coralline algae, Rubble, Sand, and Bare substrate.
 
@@ -395,12 +398,24 @@ biomassVsCoverScatterplots <-
   geom_point(aes(fill = benthic), shape = 21, alpha = 0.8, size = 2) +
   scale_color_manual(values = benthic_colors) +
   facet_wrap(~benthic, nrow = 4, scales = 'free') +
-  theme(legend.title = element_blank(), 
-        legend.position ='none',
+  theme_classic() +
+  theme(axis.text = element_text(size = 9, colour = 'black'),
+        axis.line = element_line(colour = 'black'),
+        axis.ticks = element_line(colour = 'black'),
+        axis.title = element_text(size = 12, colour = 'black'),
+        plot.subtitle = element_text(colour = 'black', size = 11, hjust = 0.5),
+        legend.background = element_rect(fill = 'white', color = NA),
+        legend.box.background = element_blank(),
+        legend.title = element_blank(),
+        legend.position = 'none',
         strip.text = element_text(hjust = 0, face = "bold"),
         strip.background = element_blank(),
-        axis.text = element_text(size = 9),
-        plot.margin = unit(c(0,.5, 0, .5), 'cm')) 
+        plot.margin = unit(c(0, .5, 0, .5), 'cm'),
+        panel.border = element_blank())
+
+#Save the plot to share in an analysis hub article
+ggsave("../plots/madagascar_report_card_biomassVsCoverPlots.svg",
+       plot = biomassVsCoverScatterplots)
 
 biomassVsCoverScatterplots
 
@@ -410,7 +425,9 @@ In this case, there are too many zeroes to fit a GAM to the "Crustose coralline 
 
 ------------------------------------------------------------------------
 
-## Scatterplot - Trophic group biomass vs. hard coral cover
+## Trophic group biomass vs. hard coral cover
+
+### Scatter plots with fitted GAMS
 
 In the bottom right corner of the report are more scatterplots that show fish biomass for each of 7 trophic group (on the y-axis) and % hard coral cover (on the x-axis), with each trophic group as a separate facet/plot. Within each plot, the data is again fitted to a generalized additive model (GAM) as above. Below is a recreation of these plots.
 
@@ -431,12 +448,20 @@ trophicBiomassVsHarcCoralScatterplots <-
   labs(x = 'Hard coral cover (%)',
        y = "Fish biomass (kg/ha)",
        title = '') +
-  theme(legend.title = element_blank(), 
-        legend.position ='none',
+  theme_classic() +
+  theme(axis.text = element_text(size = 9, colour = 'black'),
+        axis.line = element_line(colour = 'black'),
+        axis.ticks = element_line(colour = 'black'),
+        axis.title = element_text(size = 12, colour = 'black'),
+        plot.subtitle = element_text(colour = 'black', size = 11, hjust = 0.5),
+        legend.background = element_rect(fill = 'white', color = NA),
+        legend.box.background = element_blank(),
+        legend.title = element_blank(),
+        legend.position = 'none',
         strip.text = element_text(hjust = 0, face = "bold"),
         strip.background = element_blank(),
-        axis.text = element_text(size = 9),
-        plot.margin = unit(c(0,.5, 0, .5), 'cm')) 
+        plot.margin = unit(c(0, .5, 0, .5), 'cm'),
+        panel.border = element_blank())
 
 trophicBiomassVsHarcCoralScatterplots
 ```
